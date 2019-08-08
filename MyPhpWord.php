@@ -16,12 +16,7 @@ class MyPhpWord
     public $bt_font_style = null; // 标题字体
     public $bt_para_style = null; // 标题段落
     private $phpWord = null;
-    private $section = null;
-    private $cell_width = 3600;
-    private $col_style = [
-        'bgColor' => "bdd6ee",
-        'valign' => "center"
-    ];
+
     private $defaultTableStyle = [
         'borderColor' => '006699',
         'borderSize' => 6,  //
@@ -372,6 +367,11 @@ class MyPhpWord
 
     }
 
+    /**
+     * 保存
+     * @param string $path
+     * @throws \PhpOffice\PhpWord\Exception\Exception
+     */
     public function save(string $path = "")
     {
         if ($path === "") {
@@ -382,6 +382,10 @@ class MyPhpWord
         $writer->save($path);
     }
 
+    /**
+     * 下载
+     * @throws \PhpOffice\PhpWord\Exception\Exception
+     */
     public function outPut()
     {
         $writer = IOFactory::createWriter($this->phpWord, 'Word2007');
@@ -419,11 +423,13 @@ class MyPhpWord
             $row = $table->addRow($this->liMiToTwip(0.5));
             $row->addCell($this->liMiToTwip($cellWidth[$cn]), $col_style[$cn])->addText($cn, $content_style[$cn], $p_style[$cn]);
             if (ord(str_split($field, 1)[0]) >= 60 && ord(str_split($field, 1)[0]) <= 90) {
-                $check = preg_match_all('/\.jpg$/', $col_field_data[lcfirst($field)]);
-                if ($check === 0) {
-                    $row->addCell($this->liMiToTwip($cellWidth[$field]), $col_style[$field])->addImage("http://dd.falv58.com/Common/upload/cos/2019-07-1215473864691641.png", $content_style[$field]);
-                } else {
+                try {
+                    // 匹配该字段的的值是否是张有效的图片
+//                   $check = preg_match_all('/\.jpg$/', $col_field_data[lcfirst($field)]);
+                    $this->checkImage($col_field_data[lcfirst($field)]);
                     $row->addCell($this->liMiToTwip($cellWidth[$field]), $col_style[$field])->addImage($col_field_data[lcfirst($field)], $content_style[$field]);
+                } catch (Exception $e) {
+                    $row->addCell($this->liMiToTwip($cellWidth[$field]), $col_style[$field])->addImage("http://dd.falv58.com/Common/upload/cos/2019-07-1215473864691641.png", $content_style[$field]);
                 }
             } else {
                 $row->addCell($this->liMiToTwip($cellWidth[$field]), $col_style[$field])->addText($col_field_data[$field], $content_style[$field], $p_style[$field]);
@@ -432,6 +438,16 @@ class MyPhpWord
         return $table;
     }
 
+    /**
+     * 检测图片是否存在
+     * @param $source
+     * @throws \PhpOffice\PhpWord\Exception\InvalidImageException
+     * @throws \PhpOffice\PhpWord\Exception\UnsupportedImageTypeException
+     */
+    private function checkImage($source)
+    {
+        new \PhpOffice\PhpWord\Element\Image($source);
+    }
 
     /**
      * @param float $headerHeight
@@ -463,11 +479,13 @@ class MyPhpWord
             $row = $table->addRow($this->liMiToTwip($headerHeight));
             foreach ($fields as $field) {
                 if (ord(str_split($field, 1)[0]) >= 60 && ord(str_split($field, 1)[0]) <= 90) {
-                    $check = preg_match_all('/\.png/', $item[$field]);
-                    if ($check === 0) {
-                        $row->addCell($this->liMiToTwip($cellWidth[$field]))->addImage("http://dd.falv58.com/Common/upload/cos/2019-07-1215473864691641.png", $content_style[$field]);
-                    } else {
+                    try {
+//                        $check = preg_match_all('/\.png/', $item[$field]);
+                        // 匹配该字段的的值是否是张有效的图片
+                        $this->checkImage($item[$field]);
                         $row->addCell($this->liMiToTwip($cellWidth[$field]))->addImage($item[$field], $content_style[$field]);
+                    } catch (Exception $e) {
+                        $row->addCell($this->liMiToTwip($cellWidth[$field]))->addImage("http://dd.falv58.com/Common/upload/cos/2019-07-1215473864691641.png", $content_style[$field]);
                     }
                 } else {
                     $row->addCell($this->liMiToTwip($cellWidth[$field]), $cell_style[$field])

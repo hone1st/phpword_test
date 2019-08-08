@@ -1,6 +1,8 @@
 <?php
 
+
 use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\Shared\Converter;
 
 /**
  * Created by PhpStorm.
@@ -15,8 +17,9 @@ class MyPhpWord
     public $zw_para_style = null; // 正文段落样式
     public $bt_font_style = null; // 标题字体
     public $bt_para_style = null; // 标题段落
+    public $table_font_style = null; // 表格字体样式
+    public $table_bold_font_style = null; // 表格字体加粗样式
     private $phpWord = null;
-
     private $defaultTableStyle = [
         'borderColor' => '006699',
         'borderSize' => 6,  //
@@ -119,10 +122,10 @@ class MyPhpWord
             $table_style['bgColor'] = $borderColor;
         }
         if ($borderSize !== null) {
-            $table_style['bgColor'] = $this->liMiToTwip($cellMargin);
+            $table_style['bgColor'] = $this->cmToTwip($cellMargin);
         }
         if ($cellMargin !== null) {
-            $table_style['bgColor'] = $this->liMiToTwip($cellMargin);
+            $table_style['bgColor'] = $this->cmToTwip($cellMargin);
         }
 
         return $table_style;
@@ -252,20 +255,24 @@ class MyPhpWord
     public function firstIndent(string $fontSize)
     {
         $fontZF = [
-            "小五" => 0.23,
-            "五号" => 0.27,
-            "小四" => 0.31,
-            "四号" => 0.35,
-            "小三" => 0.37,
-            "三号" => 0.40,
-            "小二" => 0.45,
-            "二号" => 0.55,
-            "小一" => 0.60,
-            "一号" => 0.65,
-            "小初" => 0.85,
-            "初号" => 1.00,
+            "八号" => 0.176,
+            "七号" => 0.194,
+            "小六" => 0.229,
+            "六号" => 0.256,
+            "小五" => 0.318,
+            "五号" => 0.370,
+            "小四" => 0.423,
+            "四号" => 0.494,
+            "小三" => 0.529,
+            "三号" => 0.564,
+            "小二" => 0.635,
+            "二号" => 0.776,
+            "小一" => 0.847,
+            "一号" => 0.917,
+            "小初" => 1.270,
+            "初号" => 1.482,
         ];
-        return $this->liMiToTwip($fontZF[$fontSize]);
+        return $this->cmToTwip($fontZF[$fontSize]);
     }
 
     /**
@@ -316,13 +323,15 @@ class MyPhpWord
         }
 
         if ($spacing !== null) {
-            $p_style['spacing'] = $this->liMiToTwip($spacing);
+            $p_style['spacing'] = $spacing;
         }
         if ($spaceAfter !== null) {
-            $p_style['spaceAfter'] = $this->liMiToTwip($spaceAfter / 1.073 * 0.035);
+//            $p_style['spaceAfter'] = $this->cmToTwip($spaceAfter / 1.073 * 0.035);
+            $p_style['spaceAfter'] = $spaceAfter;
         }
         if ($spaceBefore !== null) {
-            $p_style['spaceBefore'] = $this->liMiToTwip($spaceBefore / 1.073 * 0.035);
+//            $p_style['spaceBefore'] = $this->cmToTwip($spaceBefore / 1.073 * 0.035);
+            $p_style['spaceBefore'] = $spaceBefore;
         }
         return $p_style;
     }
@@ -332,9 +341,30 @@ class MyPhpWord
      * @param float $limi
      * @return float
      */
-    public function liMiToTwip(float $limi): float
+    public function cmToTwip(float $limi): float
     {
-        return 567 * $limi;
+        return Converter::cmToTwip($limi);
+    }
+
+    /**
+     * 磅换成twip
+     * @param float $pt
+     * @return float
+     */
+    public function pointToTwip(float $pt): float
+    {
+        return Converter::pointToTwip($pt);
+    }
+
+    /**
+     * 磅换成行  行间距转用
+     * @param float $line 多少行
+     * @param string $fontSize 字体名称
+     * @return float
+     */
+    public function pointToLine(float $line, string $fontSize): float
+    {
+        return $this->pointToTwip($this->getFontSize($fontSize) * $line);
     }
 
     /**
@@ -345,7 +375,7 @@ class MyPhpWord
     public function getFontSize(string $size)
     {
         $font_size_str_to_number = [
-            "初号" => 44,
+            "初号" => 42,
             "小初" => 36,
             "一号" => 26,
             "小一" => 24,
@@ -367,11 +397,6 @@ class MyPhpWord
 
     }
 
-    /**
-     * 保存
-     * @param string $path
-     * @throws \PhpOffice\PhpWord\Exception\Exception
-     */
     public function save(string $path = "")
     {
         if ($path === "") {
@@ -382,12 +407,13 @@ class MyPhpWord
         $writer->save($path);
     }
 
-    /**
-     * 下载
-     * @throws \PhpOffice\PhpWord\Exception\Exception
-     */
-    public function outPut()
+    public function outPut(string $name = "")
     {
+        if ($name === "") {
+            $name = date("Y-m-d-His") . ".docx";
+        } elseif (!preg_match_all("/\.docx/", $name) > 0) {
+            $name = $name . ".docx";
+        }
         $writer = IOFactory::createWriter($this->phpWord, 'Word2007');
         $name = date("Y-m-d-His");
         header("Content-Description: File Transfer");
@@ -420,19 +446,19 @@ class MyPhpWord
         }
         $table = $section->addTable($tableStyle);
         foreach ($col_cn_field as $cn => $field) {
-            $row = $table->addRow($this->liMiToTwip(0.5));
-            $row->addCell($this->liMiToTwip($cellWidth[$cn]), $col_style[$cn])->addText($cn, $content_style[$cn], $p_style[$cn]);
+            $row = $table->addRow($this->cmToTwip(0.5));
+            $row->addCell($this->cmToTwip($cellWidth[$cn]), $col_style[$cn])->addText($cn, $content_style[$cn], $p_style[$cn]);
             if (ord(str_split($field, 1)[0]) >= 60 && ord(str_split($field, 1)[0]) <= 90) {
                 try {
                     // 匹配该字段的的值是否是张有效的图片
 //                   $check = preg_match_all('/\.jpg$/', $col_field_data[lcfirst($field)]);
                     $this->checkImage($col_field_data[lcfirst($field)]);
-                    $row->addCell($this->liMiToTwip($cellWidth[$field]), $col_style[$field])->addImage($col_field_data[lcfirst($field)], $content_style[$field]);
+                    $row->addCell($this->cmToTwip($cellWidth[$field]), $col_style[$field])->addImage($col_field_data[lcfirst($field)], $content_style[$field]);
                 } catch (Exception $e) {
-                    $row->addCell($this->liMiToTwip($cellWidth[$field]), $col_style[$field])->addImage("http://dd.falv58.com/Common/upload/cos/2019-07-1215473864691641.png", $content_style[$field]);
+                    $row->addCell($this->cmToTwip($cellWidth[$field]), $col_style[$field])->addImage("http://dd.falv58.com/Common/upload/cos/2019-07-1215473864691641.png", $content_style[$field]);
                 }
             } else {
-                $row->addCell($this->liMiToTwip($cellWidth[$field]), $col_style[$field])->addText($col_field_data[$field], $content_style[$field], $p_style[$field]);
+                $row->addCell($this->cmToTwip($cellWidth[$field]), $col_style[$field])->addText(empty($col_field_data[$field]) ? "" : $col_field_data[$field], $content_style[$field], $p_style[$field]);
             }
         }
         return $table;
@@ -444,7 +470,7 @@ class MyPhpWord
      * @throws \PhpOffice\PhpWord\Exception\InvalidImageException
      * @throws \PhpOffice\PhpWord\Exception\UnsupportedImageTypeException
      */
-    private function checkImage($source)
+    public function checkImage($source)
     {
         new \PhpOffice\PhpWord\Element\Image($source);
     }
@@ -471,24 +497,24 @@ class MyPhpWord
         }
         $table = $section->addTable($tableStyle);
         // tblHeader 跨页重新展示的表头
-        $row = $table->addRow($this->liMiToTwip($headerHeight), ['tblHeader' => true]);
+        $row = $table->addRow($this->cmToTwip($headerHeight), ['tblHeader' => true]);
         foreach ($row_cn as $cn) {
-            $row->addCell($this->liMiToTwip($cellWidth[$cn]), $cell_style[$cn])->addText($cn, $content_style[$cn], $p_style[$cn]);
+            $row->addCell($this->cmToTwip($cellWidth[$cn]), $cell_style[$cn])->addText($cn, $content_style[$cn], $p_style[$cn]);
         }
         foreach ($row_datas as $item) {
-            $row = $table->addRow($this->liMiToTwip($headerHeight));
+            $row = $table->addRow($this->cmToTwip($headerHeight));
             foreach ($fields as $field) {
                 if (ord(str_split($field, 1)[0]) >= 60 && ord(str_split($field, 1)[0]) <= 90) {
                     try {
 //                        $check = preg_match_all('/\.png/', $item[$field]);
                         // 匹配该字段的的值是否是张有效的图片
                         $this->checkImage($item[$field]);
-                        $row->addCell($this->liMiToTwip($cellWidth[$field]))->addImage($item[$field], $content_style[$field]);
+                        $row->addCell($this->cmToTwip($cellWidth[$field]))->addImage($item[$field], $content_style[$field]);
                     } catch (Exception $e) {
-                        $row->addCell($this->liMiToTwip($cellWidth[$field]))->addImage("http://dd.falv58.com/Common/upload/cos/2019-07-1215473864691641.png", $content_style[$field]);
+                        $row->addCell($this->cmToTwip($cellWidth[$field]))->addImage("http://dd.falv58.com/Common/upload/cos/2019-07-1215473864691641.png", $content_style[$field]);
                     }
                 } else {
-                    $row->addCell($this->liMiToTwip($cellWidth[$field]), $cell_style[$field])
+                    $row->addCell($this->cmToTwip($cellWidth[$field]), $cell_style[$field])
                         ->addText($item[$field], $content_style[$field], $p_style[$field]);
                 }
             }
